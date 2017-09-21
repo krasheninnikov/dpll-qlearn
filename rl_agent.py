@@ -1,0 +1,143 @@
+class ReplayBuf():
+    """
+    Synchronised ring buffers that hold (s_t, a_t, reward, s_t_plus_1).
+    - s_t and s_t_plus_1 have shape of (replay_size, n_ch, img_side, img_side)
+    - a_t : int vector (one-hot encoding)
+    - reward : int
+    """
+    def __init__(self, replay_len, s_shape, n_actions):
+        self.shape = s_shape
+        self.index = 0
+
+        self.s_t = np.zeros((replay_len,s_shape))
+        self.s_t_plus_1 = np.zeros((replay_len,s_shape))
+        self.n_actions = n_actions
+        self.action = np.zeros((replay_len, n_actions))
+        self.reward = np.zeros(replay_len)
+
+        self.s_current = None
+        self.a_current = None
+        self.r_current = None
+
+    def append(self, s_t, a_t, r_t, s_t_plus_1):
+        self.s_t[self.index, :] = s_t
+        self.s_t_plus_1[self.index, :] = s_t_plus_1
+        self.reward[self.index] = r_t
+
+        act = np.zeros(self.n_actions)
+        act[a_t] = 1
+        self.action[self.index] = act
+
+        self.index += 1
+        self.index = self.index % replay_len
+
+    def append_s_a_r(self, s_t, a_t, r_t):
+        if s_current is None:
+            self.s_current = s_t
+            self.a_current = a_t
+            self.r_current = r_t
+
+        if s_current is not None:
+            self.append(self.s_current, self.a_current, self.r_current, s_t)
+            self.s_current = s_t
+            self.a_current = a_t
+            self.r_current = r_t
+
+    def game_over(self):
+        self.s_current = None
+        self.a_current = None
+        self.r_current = None
+
+        self.reward[self.index - 1] = 0
+
+class Estimator():
+    """
+    Value Function approximator.
+    """
+
+    def __init__(self, replay_buf):
+        self.n_actions = replay_buf.n_actions
+        self.scaler = sklearn.preprocessing.StandardScaler()
+        self.scaler.fit(replay_buf.s_t)
+
+        # Used to converte a state to a featurizes represenation.
+        # We use RBF kernels with different variances to cover
+        # different parts of the space
+        self.featurizer = sklearn.pipeline.FeatureUnion([
+            ("rbf1", RBFSampler(gamma=8.0, n_components=100)),
+            ("rbf2", RBFSampler(gamma=4.0, n_components=100)),
+            ("rbf3", RBFSampler(gamma=2.0, n_components=100)),
+            ("rbf4", RBFSampler(gamma=0.5, n_components=100))
+        ])
+        self.featurizer.fit(self.scaler.transform(replay_buf.s_t))
+
+
+        # We create a separate model for each action in the environment's
+        # action space. Alternatively we could somehow encode the action
+        # into the features, but this way it's easier to code up.
+        self.models = []
+        for _ in range(self.n_actions):
+            model = SGDRegressor(learning_rate="constant")
+            # We need to call partial_fit once to initialize the model
+            # or we get a NotFittedError when trying to make a prediction
+            # This is quite hacky.
+            model.partial_fit([self.featurize_state(replay_buf.s_t[0])], [0])
+            self.models.append(model)
+
+    def featurize_state(self, state):
+        """
+        Returns the featurized representation for a state.
+        """
+        scaled = self.scaler.transform([state])
+        featurized = self.featurizer.transform(scaled)
+        return featurized[0]
+
+    def predict(self, s, a=None):
+        """
+        Makes value function predictions.
+
+        Args:
+            s: state to make a prediction for
+            a: (Optional) action to make a prediction for
+
+        Returns
+            If an action a is given this returns a single number as the prediction.
+            If no action is given this returns a vector or predictions for all actions
+            in the environment where pred[i] is the prediction for action i.
+
+        """
+        features = self.featurize_state(s)
+        if not a:
+            return np.array([m.predict([features])[0] for m in self.models])
+        else:
+            return self.models[a].predict([features])[0]
+
+    def update(self, s, a, y):
+        """
+        Updates the estimator parameters for a given state and action towards
+        the target y.
+        """
+        features = self.featurize_state(s)
+        self.models[a].partial_fit([features], [y])
+
+    def make_epsilon_greedy_policy(self, epsilon):
+    """
+    Creates an epsilon-greedy policy based on a given Q-function approximator and epsilon.
+
+    Args:
+        estimator: An estimator that returns q values for a given state
+        epsilon: The probability to select a random action . float between 0 and 1.
+        nA: Number of actions in the environment.
+
+    Returns:
+        A function that takes the observation as an argument and returns
+        the probabilities for each action in the form of a numpy array of length nA.
+
+    """
+    def policy_fn(observation):
+        A = np.ones(self.n_actions, dtype=float) * epsilon / self.n_actions
+        q_values = self.predict(observation)
+        best_action = np.argmax(q_values)
+        A[best_action] += (1.0 - epsilon)
+        return A
+    return policy_fn
