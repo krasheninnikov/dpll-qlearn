@@ -5,6 +5,9 @@ import argparse
 import datautil
 import traceback
 import heuristics
+import numpy as np
+from rl_agent import ReplayBuf, Estimator, make_state
+
 
 
 __version__='0.4'
@@ -41,6 +44,17 @@ def main(options):
 
     else:
         print 'Unknown algorithm'   # This should never be printed if the argparser works well
+
+
+def automatic_heuristic(var_range, cdata):
+
+    s = make_state(var_range, cdata)
+    print(s)
+    #heuristic_id = estimator.policy_eps_greedy(eps, s)
+    heuristic_id = 0
+    replay_buf.append_s_a_r(s, heuristic_id, -1)
+
+    return heuristics.use_heuristic(heuristic_id, var_range, cdata)
 
 
 def formatLocalSearchResult(bool_result):
@@ -82,9 +96,13 @@ def executeSystematicSearchAlgorithm(options):
         res = None
 
         run_stats = RunStats()
-        comments += 'Using DPLL algorithm\n'
+
+        global replay_buf
+        replay_buf = ReplayBuf(5000, 7, 2)
+
+
         res = dpll.solve(num_vars, clauses,
-                         var_selection_heuristics[options.vselection],
+                         automatic_heuristic,
                          run_stats)
         if res[0]:
             print(run_stats.n_splits)

@@ -1,3 +1,17 @@
+import numpy as np
+import sklearn
+
+
+def make_state(var_range, cdata):
+    clause_lengths = np.array(map(len, cdata.clauses))
+
+    n_clauses  = len(clause_lengths)
+    percentile_len = np.percentile(clause_lengths, np.arange(6)*20)
+
+    state = np.append(percentile_len, n_clauses)
+    return state
+
+
 class ReplayBuf():
     """
     Synchronised ring buffers that hold (s_t, a_t, reward, s_t_plus_1).
@@ -8,6 +22,7 @@ class ReplayBuf():
     def __init__(self, replay_len, s_shape, n_actions):
         self.shape = s_shape
         self.index = 0
+        self.replay_len = replay_len
 
         self.s_t = np.zeros((replay_len,s_shape))
         self.s_t_plus_1 = np.zeros((replay_len,s_shape))
@@ -29,15 +44,15 @@ class ReplayBuf():
         self.action[self.index] = act
 
         self.index += 1
-        self.index = self.index % replay_len
+        self.index = self.index % self.replay_len
 
     def append_s_a_r(self, s_t, a_t, r_t):
-        if s_current is None:
+        if self.s_current is None:
             self.s_current = s_t
             self.a_current = a_t
             self.r_current = r_t
 
-        if s_current is not None:
+        if self.s_current is not None:
             self.append(self.s_current, self.a_current, self.r_current, s_t)
             self.s_current = s_t
             self.a_current = a_t
@@ -120,24 +135,28 @@ class Estimator():
         features = self.featurize_state(s)
         self.models[a].partial_fit([features], [y])
 
-    def make_epsilon_greedy_policy(self, epsilon):
-    """
-    Creates an epsilon-greedy policy based on a given Q-function approximator and epsilon.
+    def policy_eps_greedy(self, epsilon, observation):
 
-    Args:
-        estimator: An estimator that returns q values for a given state
-        epsilon: The probability to select a random action . float between 0 and 1.
-        nA: Number of actions in the environment.
+        """
+        Creates an epsilon-greedy policy based on a given Q-function approximator and epsilon.
 
-    Returns:
-        A function that takes the observation as an argument and returns
-        the probabilities for each action in the form of a numpy array of length nA.
+        Args:
+            estimator: An estimator that returns q values for a given state
+            epsilon: The probability to select a random action . float between 0 and 1.
+            nA: Number of actions in the environment.
 
-    """
-    def policy_fn(observation):
+        Returns:
+            A function that takes the observation as an argument and returns
+            the probabilities for each action in the form of a numpy array of length nA.
+        """
+
         A = np.ones(self.n_actions, dtype=float) * epsilon / self.n_actions
         q_values = self.predict(observation)
         best_action = np.argmax(q_values)
         A[best_action] += (1.0 - epsilon)
         return A
-    return policy_fn
+
+    def train(self, discount_factor):
+        q_values_next = self.predict(self.replay_buf.s_t_plus_1)
+        td_target = self.replay_buf.reward + discount_factor * np.max(q_values_next)
+        estimator.update(self.replay_buf.s_t, self.replay_buf.action, td_target)

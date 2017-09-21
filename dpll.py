@@ -87,9 +87,7 @@ def _solve(variables, cdata, interpretation, heuristic, run_stats):
         return (True, interpretation)
 
     # select variable to explore
-    var = heuristic(variables, cdata.litclauses)
-    if True: #run_stats.n_splits == 40:
-        print('var range', map(len, cdata.clauses))
+    var = heuristic(variables, cdata)
 
     used_vars.add(var)
     variables.remove(var)

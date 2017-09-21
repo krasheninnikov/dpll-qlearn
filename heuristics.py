@@ -1,31 +1,25 @@
+import numpy as np
+
 # -*- coding: utf-8 -*-
-def use_heuristic(heuristic_id):
-    raise NotImplementedError
+def use_heuristic(heuristic_id, var_range, cdata):
+    if heuristic_id == 0:
+        return mostOftenVariable(var_range, cdata)
 
-def make_state(var_range, litclauses):
-    raise NotImplementedError
-
-def automatic_heuristic(var_range, litclauses):
-
-    s = make_state(var_range, litclauses)
-    heuristic_id = agent.choose_a(s)
-    replay_buf.append_s_a_r(s, a, -1)
-
-    return use_heuristic(heuristic_id, var_range, litclauses)
+    if heuristic_id == 1:
+        return mostEqulibratedVariable(var_range, cdata)
 
 #
 #
-def mostOftenVariable(var_range, litclauses):
+def mostOftenVariable(var_range, cdata):
     """
-    mostOftenVariable(var_range, litclauses) -> variable
+    mostOftenVariable(var_range, cdata.litclauses) -> variable
 
         - var_range: An Iterable that which returns all the possible variables
 
-        - litclauses: A dictionary with all the clauses per literal in var_range
+        - cdata.litclauses: A dictionary with all the clauses per literal in var_range
 
     Returns the variable that apears more times on the formula
     """
-
 
     best = -1
     var = 0
@@ -34,12 +28,12 @@ def mostOftenVariable(var_range, litclauses):
         times = 0
 
         try:
-            times += len(litclauses[v])
+            times += len(cdata.litclauses[v])
         except KeyError:
             pass
 
         try:
-            times += len(litclauses[-v])
+            times += len(cdata.litclauses[-v])
         except KeyError:
             pass
 
@@ -52,13 +46,13 @@ def mostOftenVariable(var_range, litclauses):
 
 #
 #
-def mostEqulibratedVariable(var_range, litclauses):
+def mostEqulibratedVariable(var_range, cdata):
     """
-    mostEqulibratedVariable(var_range, litclauses) -> variable
+    mostEqulibratedVariable(var_range, cdata.litclauses) -> variable
 
         - var_range: An Iterable that which returns all the possible variables
 
-        - litclauses: A dictionary with all the clauses per literal in var_range
+        - cdata.litclauses: A dictionary with all the clauses per literal in var_range
 
     Returns the most equilibrated variable [ (len(var) * len(-var)) ]
     """
@@ -70,12 +64,12 @@ def mostEqulibratedVariable(var_range, litclauses):
         pvlen = nvlen = 0
 
         try:
-            pvlen = len(litclauses[v])
+            pvlen = len(cdata.litclauses[v])
         except KeyError:
             pass
 
         try:
-            nvlen = len(litclauses[-v])
+            nvlen = len(cdata.litclauses[-v])
         except KeyError:
             pass
 
