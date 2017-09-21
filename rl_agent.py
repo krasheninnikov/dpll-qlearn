@@ -1,5 +1,9 @@
 import numpy as np
 import sklearn
+import sklearn.preprocessing
+import sklearn.pipeline
+from sklearn.linear_model import SGDRegressor
+from sklearn.kernel_approximation import RBFSampler
 
 
 def make_state(var_range, cdata):
@@ -19,13 +23,13 @@ class ReplayBuf():
     - a_t : int vector (one-hot encoding)
     - reward : int
     """
-    def __init__(self, replay_len, s_shape, n_actions):
-        self.shape = s_shape
+    def __init__(self, replay_len, s_len, n_actions):
+        self.shape = s_len
         self.index = 0
         self.replay_len = replay_len
 
-        self.s_t = np.zeros((replay_len,s_shape))
-        self.s_t_plus_1 = np.zeros((replay_len,s_shape))
+        self.s_t = np.zeros((replay_len,s_len), dtype = 'float32')
+        self.s_t_plus_1 = np.zeros((replay_len,s_len), dtype = 'float32')
         self.n_actions = n_actions
         self.action = np.zeros((replay_len, n_actions))
         self.reward = np.zeros(replay_len)
@@ -65,6 +69,7 @@ class ReplayBuf():
 
         self.reward[self.index - 1] = 0
 
+
 class Estimator():
     """
     Value Function approximator.
@@ -72,8 +77,8 @@ class Estimator():
 
     def __init__(self, replay_buf):
         self.n_actions = replay_buf.n_actions
-        self.scaler = sklearn.preprocessing.StandardScaler()
-        self.scaler.fit(replay_buf.s_t)
+        #self.scaler = sklearn.preprocessing.StandardScaler()
+        #self.scaler.fit(replay_buf.s_t)
 
         # Used to converte a state to a featurizes represenation.
         # We use RBF kernels with different variances to cover
@@ -84,7 +89,8 @@ class Estimator():
             ("rbf3", RBFSampler(gamma=2.0, n_components=100)),
             ("rbf4", RBFSampler(gamma=0.5, n_components=100))
         ])
-        self.featurizer.fit(self.scaler.transform(replay_buf.s_t))
+        #self.featurizer.fit(self.scaler.transform(replay_buf.s_t))
+        self.featurizer.fit(replay_buf.s_t)
 
 
         # We create a separate model for each action in the environment's
@@ -96,16 +102,18 @@ class Estimator():
             # We need to call partial_fit once to initialize the model
             # or we get a NotFittedError when trying to make a prediction
             # This is quite hacky.
-            model.partial_fit([self.featurize_state(replay_buf.s_t[0])], [0])
+            # model.partial_fit([self.featurize_state(replay_buf.s_t)], [0])
+            model.partial_fit(replay_buf.s_t, np.zeros(replay_buf.replay_len))
             self.models.append(model)
 
     def featurize_state(self, state):
         """
         Returns the featurized representation for a state.
         """
-        scaled = self.scaler.transform([state])
-        featurized = self.featurizer.transform(scaled)
-        return featurized[0]
+        #scaled = self.scaler.transform([state])
+        featurized = self.featurizer.transform(state)
+        return state
+        #return featurized[0]
 
     def predict(self, s, a=None):
         """
@@ -121,11 +129,12 @@ class Estimator():
             in the environment where pred[i] is the prediction for action i.
 
         """
-        features = self.featurize_state(s)
+        features = s
+        #features = self.featurize_state(s)
         if not a:
-            return np.array([m.predict([features])[0] for m in self.models])
+            return np.array([m.predict(features) for m in self.models])
         else:
-            return self.models[a].predict([features])[0]
+            return self.models[a].predict(features)[0]
 
     def update(self, s, a, y):
         """
@@ -133,7 +142,8 @@ class Estimator():
         the target y.
         """
         features = self.featurize_state(s)
-        self.models[a].partial_fit([features], [y])
+        self.models[a].partial_fit(features, y)
+
 
     def policy_eps_greedy(self, epsilon, observation):
 
@@ -151,12 +161,14 @@ class Estimator():
         """
 
         A = np.ones(self.n_actions, dtype=float) * epsilon / self.n_actions
-        q_values = self.predict(observation)
+        q_values = self.predict([observation])
         best_action = np.argmax(q_values)
         A[best_action] += (1.0 - epsilon)
         return A
 
-    def train(self, discount_factor):
-        q_values_next = self.predict(self.replay_buf.s_t_plus_1)
-        td_target = self.replay_buf.reward + discount_factor * np.max(q_values_next)
-        estimator.update(self.replay_buf.s_t, self.replay_buf.action, td_target)
+    def train(self, discount_factor, replay_buf):
+        for a in range(replay_buf.n_actions):
+            action_index = (replay_buf.action[:,a] == a)
+            q_values_next = self.predict(replay_buf.s_t_plus_1[action_index])
+            td_target = replay_buf.reward[action_index] + discount_factor * np.max(q_values_next)
+            self.update(replay_buf.s_t[action_index, :], a, td_target)

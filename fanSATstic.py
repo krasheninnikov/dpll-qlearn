@@ -39,19 +39,35 @@ def main(options):
     """
     Main(options): void
     """
-    if isSystematicSearch(options.algorithm):
-        executeSystematicSearchAlgorithm(options)
 
-    else:
-        print 'Unknown algorithm'   # This should never be printed if the argparser works well
+    global replay_buf
+    global q_l_agent
+    replay_buf = ReplayBuf(5000, 7, n_actions=2)
+    q_l_agent = Estimator(replay_buf)
+    run_stats = RunStats()
+
+    n_episodes = 20
+    for i in range(n_episodes):
+        num_vars, clauses = datautil.parseCNF(options.file)
+        res = None
+        res = dpll.solve(num_vars, clauses,
+                         automatic_heuristic,
+                         run_stats)
+        #if res[0]:
+
+        print("Ep {}  done in {} splits".format(i, run_stats.n_splits ))
+        run_stats.n_splits = 0
+        replay_buf.game_over()
+        q_l_agent.train(0.99, replay_buf)
+
+        #print formatSystematicSearchResult(res)
 
 
 def automatic_heuristic(var_range, cdata):
 
     s = make_state(var_range, cdata)
-    print(s)
-    #heuristic_id = estimator.policy_eps_greedy(eps, s)
-    heuristic_id = 0
+    action_probs = q_l_agent.policy_eps_greedy(0.05, s)
+    heuristic_id = np.random.choice(np.arange(len(action_probs)), p=action_probs)
     replay_buf.append_s_a_r(s, heuristic_id, -1)
 
     return heuristics.use_heuristic(heuristic_id, var_range, cdata)
@@ -77,45 +93,6 @@ def formatLocalSearchResult(bool_result):
             out += ' %d' % (-(ind+1) )
     return out
 
-
-#####################
-#                   #
-# SYSTEMATIC SEARCH #
-#                   #
-#####################
-
-
-def executeSystematicSearchAlgorithm(options):
-    """
-    Execute the specified algorthim and prints the result
-    """
-
-    try:
-        num_vars, clauses = datautil.parseCNF(options.file)
-        comments = ''
-        res = None
-
-        run_stats = RunStats()
-
-        global replay_buf
-        replay_buf = ReplayBuf(5000, 7, 2)
-
-
-        res = dpll.solve(num_vars, clauses,
-                         automatic_heuristic,
-                         run_stats)
-        if res[0]:
-            print(run_stats.n_splits)
-
-        printComments(comments)
-        print formatSystematicSearchResult(res)
-
-    except Exception, e:
-        traceback.print_exc()
-        print '%s: %s' % (e.__class__.__name__, str(e))
-
-#
-#
 def formatSystematicSearchResult(result):
     """
     formatSystematicSearchResult(result) -> string
