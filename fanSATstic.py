@@ -1,16 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-import dp
 import dpll #TODO redo the algorithm
-import gsat
-import wgsat
-import gwsat
-import wgwsat
 import argparse
 import datautil
 import traceback
 import heuristics
+import numpy as np
+from rl_agent import ReplayBuf, Estimator, make_state
+
+
 
 __version__='0.4'
 __license__='GPL'
@@ -20,30 +18,15 @@ __authors__=['Marc Piñol Pueyo <mpp5@alumnes.udl.cat>',
 __description__='FanSATstic v%s' % __version__
 
 # List of possible algorithms
-GSAT = 'gsat'
-GWSAT = 'gwsat'
-local_search_algs = [GSAT, GWSAT]
-
-DAVIS_PUTNAM = 'dp'
 DPLL = 'dpll'
-systematic_search_algs = [DAVIS_PUTNAM, DPLL]
+systematic_search_algs = [DPLL]
 
 # Variable selection heuristics
 MOST_OFTEN = 'most_often'
 MOST_EQUILIBRATED = 'most_equilibrated'
-MOM = 'mom'
-JWOS = 'jwos'
-JWTS = 'jwts'
-DLCS = 'dlcs'
-DLIS = 'dlis'
-var_selection_heuristics = { 
+var_selection_heuristics = {
                     MOST_OFTEN : heuristics.mostOftenVariable,
-                    MOST_EQUILIBRATED : heuristics.mostEqulibratedVariable,
-                    MOM : heuristics.mom,
-                    JWOS : heuristics.jwOS,
-                    JWTS : heuristics.jwTS,
-                    DLCS : heuristics.dlcs,
-                    DLIS : heuristics.dlis  
+                    MOST_EQUILIBRATED : heuristics.mostEqulibratedVariable
                                 }
 
 # Some output formats
@@ -56,66 +39,40 @@ def main(options):
     """
     Main(options): void
     """
-    if isLocalSearch(options.algorithm):
-        executeLocalSearchAlgorithm(options)
 
-    elif isSystematicSearch(options.algorithm):
-        executeSystematicSearchAlgorithm(options)
+    global replay_buf
+    global q_l_agent
+    replay_buf = ReplayBuf(5000, 7, n_actions=3)
+    q_l_agent = Estimator(replay_buf)
+    run_stats = RunStats()
 
-    else:
-        print 'Unknown algorithm'   # This should never be printed if the argparser works well
-
-
-################
-#              #
-# LOCAL SEARCH #
-#              #
-################
-
-#
-#
-def executeLocalSearchAlgorithm(options):
-    """
-    Execute the specified algorithm and prints the result
-    """
-
-    try:
+    n_episodes = 100
+    for i in range(n_episodes):
         num_vars, clauses = datautil.parseCNF(options.file)
-        comments = ''
-
-        # Chose and run algorithm
         res = None
-        if GSAT == options.algorithm.lower():
+        res = dpll.solve(num_vars, clauses,
+                         automatic_heuristic,
+                         run_stats)
+        #if res[0]:
 
-            if options.weighted:
-                comments += 'Solved With: Weighted GSAT'
-                res = wgsat.solve(num_vars, clauses, len(clauses)//2)
-            else:
-                comments += 'Solved With: GSAT'
-                res = gsat.solve(num_vars, clauses, len(clauses)//2)
+        print("Ep {}  done in {} splits".format(i, run_stats.n_splits ))
+        run_stats.n_splits = 0
+        replay_buf.game_over()
+        q_l_agent.train(discount_factor = 0.999, replay_buf = replay_buf)
 
-        elif GWSAT == options.algorithm.lower():
+        #print formatSystematicSearchResult(res)
 
-            if options.weighted:
-                comments += 'Solved With: Weighted GWSAT'
-                res = wgwsat.solve(num_vars, clauses, len(clauses)//2, 0.4)
-            else:
-                comments += 'Solved With: GWSAT'
-                res = gwsat.solve(num_vars, clauses, len(clauses)//2, 0.35)
-        else:
-            raise Exception('Unspecified algorithm')
 
-        # If the formula it is not satisfiable this lines are never executed
-        del res[0]
-        printComments(comments)
-        print formatLocalSearchResult(res)
+def automatic_heuristic(var_range, cdata):
 
-    except Exception, e:
-        traceback.print_exc()
-        print '%s: %s' % (e.__class__.__name__, str(e))
+    s = make_state(var_range, cdata)
+    action_probs = q_l_agent.policy_eps_greedy(0.01, s)
+    heuristic_id = np.random.choice(np.arange(len(action_probs)), p=action_probs)
+    replay_buf.append_s_a_r(s, heuristic_id, -1)
 
-#
-#
+    return heuristics.use_heuristic(heuristic_id, var_range, cdata)
+
+
 def formatLocalSearchResult(bool_result):
     """
     formatLocalSearchResult(bool_result) -> string
@@ -127,8 +84,8 @@ def formatLocalSearchResult(bool_result):
     s SATISFIABLE
     v 1 -2 -3
     """
-    out = '%s\nv' % SATISFIABLE_OUT 
-    
+    out = '%s\nv' % SATISFIABLE_OUT
+
     for ind,b in enumerate(bool_result):
         if b:
             out += ' %d' % (ind+1)
@@ -136,49 +93,6 @@ def formatLocalSearchResult(bool_result):
             out += ' %d' % (-(ind+1) )
     return out
 
-
-#####################
-#                   #
-# SYSTEMATIC SEARCH #
-#                   #
-#####################
-
-#
-#
-def executeSystematicSearchAlgorithm(options):
-    """
-    Execute the specified algorthim and prints the result
-    """
-
-    try:
-        num_vars, clauses = datautil.parseCNF(options.file)
-        comments = ''
-        res = None
-        
-        if DAVIS_PUTNAM == options.algorithm.lower():
-            comments += 'Using DP algorithm (The orignal DP not DPLL)\n'
-            comments += 'The DP algorithm do not give a prove of satisfiablity\n'
-            comments += 'If the formula is unsatisfiable, the algorithm gives ' \
-                        'you a core'
-
-            res = dp.solve(num_vars, clauses,
-                           var_selection_heuristics[options.vselection])
-             
-                
-        elif DPLL == options.algorithm.lower():
-            comments += 'Using DPLL algorithm\n'
-            res = dpll.solve(num_vars, clauses,
-                             var_selection_heuristics[options.vselection])
-                           
-        printComments(comments)
-        print formatSystematicSearchResult(res)
-                    
-    except Exception, e:
-        traceback.print_exc()
-        print '%s: %s' % (e.__class__.__name__, str(e))
-
-#
-#
 def formatSystematicSearchResult(result):
     """
     formatSystematicSearchResult(result) -> string
@@ -238,14 +152,6 @@ def isSystematicSearch(alg):
 
 #
 #
-def isLocalSearch(alg):
-    """
-    Returns true if the algorithm is one of the local search list
-    """
-    return alg.lower() in local_search_algs
-
-#
-#
 def printComments(comments):
     """
     Prints all the comment lines followed by the comment character
@@ -253,6 +159,13 @@ def printComments(comments):
     for comment in comments.splitlines():
         print 'c', comment
 
+
+class RunStats(object):
+    def __init__(self):
+        self.n_splits = 0
+
+    def add_split(self):
+        self.n_splits += 1
 
 #######################
 #                     #
@@ -264,11 +177,12 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description=__description__)
 
+
     parser.add_argument('-f', '--file', action='store', default="",
                     required=True, help='Path to a cnf file')
 
     parser.add_argument('-a', '--algorithm', action='store', default="",
-                    choices=local_search_algs + systematic_search_algs,
+                    choices=systematic_search_algs,
                     required=True, help='Specifies which algorithm use to '
                                         'solve the formula')
 
