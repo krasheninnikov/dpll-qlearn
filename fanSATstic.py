@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+	#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import dpll #TODO redo the algorithm
 import argparse
@@ -24,9 +24,19 @@ systematic_search_algs = [DPLL]
 # Variable selection heuristics
 MOST_OFTEN = 'most_often'
 MOST_EQUILIBRATED = 'most_equilibrated'
-var_selection_heuristics = {
+MOM = 'mom'
+JWOS = 'jwos'
+JWTS = 'jwts'
+DLCS = 'dlcs'
+DLIS = 'dlis'
+var_selection_heuristics = { 
                     MOST_OFTEN : heuristics.mostOftenVariable,
-                    MOST_EQUILIBRATED : heuristics.mostEqulibratedVariable
+                    MOST_EQUILIBRATED : heuristics.mostEqulibratedVariable,
+                    MOM : heuristics.mom,
+                    JWOS : heuristics.jwOS,
+                    JWTS : heuristics.jwTS,
+                    DLCS : heuristics.dlcs,
+                    DLIS : heuristics.dlis  
                                 }
 
 # Some output formats
