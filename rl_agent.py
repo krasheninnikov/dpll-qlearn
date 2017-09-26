@@ -169,6 +169,7 @@ class Estimator():
     def train(self, discount_factor, replay_buf):
         for a in range(replay_buf.n_actions):
             action_index = (replay_buf.action[:,a] == a)
-            q_values_next = self.predict(replay_buf.s_t_plus_1[action_index])
-            td_target = replay_buf.reward[action_index] + discount_factor * np.max(q_values_next)
-            self.update(replay_buf.s_t[action_index, :], a, td_target)
+            if sum(action_index) >0:
+                q_values_next = self.predict(replay_buf.s_t_plus_1[action_index])
+                td_target = replay_buf.reward[action_index] + discount_factor * np.max(q_values_next)
+                self.update(replay_buf.s_t[action_index, :], a, td_target)
