@@ -29,14 +29,14 @@ JWOS = 'jwos'
 JWTS = 'jwts'
 DLCS = 'dlcs'
 DLIS = 'dlis'
-var_selection_heuristics = { 
+var_selection_heuristics = {
                     MOST_OFTEN : heuristics.mostOftenVariable,
                     MOST_EQUILIBRATED : heuristics.mostEqulibratedVariable,
                     MOM : heuristics.mom,
                     JWOS : heuristics.jwOS,
                     JWTS : heuristics.jwTS,
                     DLCS : heuristics.dlcs,
-                    DLIS : heuristics.dlis  
+                    DLIS : heuristics.dlis
                                 }
 
 # Some output formats
@@ -60,7 +60,8 @@ def main(options):
     for i in range(n_episodes):
         num_vars, clauses = datautil.parseCNF(options.file)
         res = None
-        res = dpll.solve(num_vars, clauses,
+        res = dpll.solve(num_vars,
+                         clauses,
                          automatic_heuristic,
                          run_stats)
         #if res[0]:
@@ -154,14 +155,6 @@ def formatSystematicSearchResult(result):
 
 #
 #
-def isSystematicSearch(alg):
-    """
-    Returns true if the algorithm is one of the local search list
-    """
-    return alg.lower() in systematic_search_algs
-
-#
-#
 def printComments(comments):
     """
     Prints all the comment lines followed by the comment character
@@ -191,21 +184,12 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--file', action='store', default="",
                     required=True, help='Path to a cnf file')
 
-    parser.add_argument('-a', '--algorithm', action='store', default="",
-                    choices=systematic_search_algs,
-                    required=True, help='Specifies which algorithm use to '
-                                        'solve the formula')
-
     parser.add_argument('-vsh', '--vselection', action='store',
                         default=MOST_OFTEN,
                         choices=var_selection_heuristics.keys(),
                         help='Specfies the variable selection heuristic.'
                         'These heuristics are used only in the systematic '
                         'search algorithms. DEFAULT = %s' % MOST_OFTEN)
-
-    parser.add_argument('-w', '--weighted', action='store_true',
-                    default=False,
-                    help='Uses a weighted version of the algorithms (If exists)')
 
     options = parser.parse_args()
 
