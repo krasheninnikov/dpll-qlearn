@@ -80,21 +80,6 @@ class Estimator():
 
     def __init__(self, replay_buf):
         self.n_actions = replay_buf.n_actions
-        #self.scaler = sklearn.preprocessing.StandardScaler()
-        #self.scaler.fit(replay_buf.s_t)
-
-        # Used to converte a state to a featurizes represenation.
-        # We use RBF kernels with different variances to cover
-        # different parts of the space
-        self.featurizer = sklearn.pipeline.FeatureUnion([
-            ("rbf1", RBFSampler(gamma=8.0, n_components=100)),
-            ("rbf2", RBFSampler(gamma=4.0, n_components=100)),
-            ("rbf3", RBFSampler(gamma=2.0, n_components=100)),
-            ("rbf4", RBFSampler(gamma=0.5, n_components=100))
-        ])
-        #self.featurizer.fit(self.scaler.transform(replay_buf.s_t))
-        self.featurizer.fit(replay_buf.s_t)
-
 
         # We create a separate model for each action in the environment's
         # action space. Alternatively we could somehow encode the action
@@ -109,14 +94,6 @@ class Estimator():
             model.partial_fit(replay_buf.s_t, np.zeros(replay_buf.replay_len))
             self.models.append(model)
 
-    def featurize_state(self, state):
-        """
-        Returns the featurized representation for a state.
-        """
-        #scaled = self.scaler.transform([state])
-        featurized = self.featurizer.transform(state)
-        return state
-        #return featurized[0]
 
     def predict(self, s, a=None):
         """
@@ -132,20 +109,18 @@ class Estimator():
             in the environment where pred[i] is the prediction for action i.
 
         """
-        features = s
-        #features = self.featurize_state(s)
+
         if not a:
-            return np.array([m.predict(features) for m in self.models])
+            return np.array([m.predict(s) for m in self.models])
         else:
-            return self.models[a].predict(features)[0]
+            return self.models[a].predict(s)[0]
 
     def update(self, s, a, y):
         """
         Updates the estimator parameters for a given state and action towards
         the target y.
         """
-        features = self.featurize_state(s)
-        self.models[a].partial_fit(features, y)
+        self.models[a].partial_fit(s, y)
 
 
     def policy_eps_greedy(self, epsilon, observation):
