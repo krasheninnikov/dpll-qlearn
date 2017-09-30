@@ -67,8 +67,11 @@ class ReplayBuf():
         self.a_current = None
         self.r_current = None
 
-        self.reward[self.index - 1] = 0
+        self.reward[self.index - 1] = 1
 
+    def reset_index_back_by_n(self, n):
+        self.index = self.index - n
+        self.index = self.index % self.replay_len
 
 class Estimator():
     """

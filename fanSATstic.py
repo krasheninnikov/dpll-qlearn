@@ -52,12 +52,21 @@ def main(options):
 
     global replay_buf
     global q_l_agent
-    replay_buf = ReplayBuf(5000, 7, n_actions=3)
+    global epsilon
+    replay_buf = ReplayBuf(10000, 7, n_actions=3)
     q_l_agent = Estimator(replay_buf)
     run_stats = RunStats()
 
-    n_episodes = 100
+    n_episodes = 1000
     for i in range(n_episodes):
+
+        if i < 100:
+            epsilon = 1
+        else:
+            epsilon = 0.1 - (0.1 * i / n_episodes)
+            q_l_agent.train(discount_factor = 0.999, replay_buf = replay_buf)
+
+
         num_vars, clauses = datautil.parseCNF(options.file)
         res = None
         res = dpll.solve(num_vars,
@@ -65,19 +74,24 @@ def main(options):
                          automatic_heuristic,
                          run_stats)
         #if res[0]:
-
         print("Ep {}  done in {} splits".format(i, run_stats.n_splits ))
-        run_stats.n_splits = 0
         replay_buf.game_over()
-        q_l_agent.train(discount_factor = 0.999, replay_buf = replay_buf)
+
+        if i>100:
+            if run_stats.n_splits > 70:
+            #np.percentile(np.asarray(run_stats.episode_stats), 40):
+                replay_buf.reset_index_back_by_n(run_stats.n_splits)
+        run_stats.finish_episode()
+
 
         #print formatSystematicSearchResult(res)
 
 
 def automatic_heuristic(var_range, cdata):
 
+    #epsilon = 0.05
     s = make_state(var_range, cdata)
-    action_probs = q_l_agent.policy_eps_greedy(0.01, s)
+    action_probs = q_l_agent.policy_eps_greedy(epsilon, s)
     heuristic_id = np.random.choice(np.arange(len(action_probs)), p=action_probs)
     replay_buf.append_s_a_r(s, heuristic_id, -1)
 
@@ -165,7 +179,14 @@ def printComments(comments):
 
 class RunStats(object):
     def __init__(self):
+        self.n_episodes = 0
         self.n_splits = 0
+        self.episode_stats = []
+
+    def finish_episode(self):
+        self.episode_stats.append(self.n_splits)
+        self.n_splits = 0
+        self.n_episodes += 1
 
     def add_split(self):
         self.n_splits += 1

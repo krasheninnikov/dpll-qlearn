@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import numpy as np
 import satutil
 import datautil
 import collections
@@ -91,7 +91,6 @@ def _solve(variables, cdata, interpretation, heuristic, run_stats):
 
     used_vars.add(var)
     variables.remove(var)
-
 
     run_stats.add_split()
 
