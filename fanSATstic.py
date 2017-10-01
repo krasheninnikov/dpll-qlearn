@@ -53,7 +53,7 @@ def main(options):
     global replay_buf
     global q_l_agent
     global epsilon
-    replay_buf = ReplayBuf(10000, 7, n_actions=3)
+    replay_buf = ReplayBuf(10000, 13, n_actions=3)
     q_l_agent = Estimator(replay_buf)
     run_stats = RunStats()
 
