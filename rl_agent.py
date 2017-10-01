@@ -14,8 +14,7 @@ def make_state(var_range, cdata):
     percentile_len = np.percentile(clause_lengths, np.arange(6)*20)
 
     percentile_occurences = np.percentile(lit_occurrences, np.arange(6)*20)
-    print(percentile_occurences.shape)
-
+    
     state = np.append(percentile_len, n_clauses)
     state = np.concatenate((state, percentile_occurences),axis=0)
     return state
