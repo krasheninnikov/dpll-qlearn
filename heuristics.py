@@ -2,6 +2,7 @@ import numpy as np
 
 # -*- coding: utf-8 -*-
 def use_heuristic(heuristic_id, var_range, cdata):
+
     if heuristic_id == 0:
         return mostOftenVariable(var_range, cdata)
 
@@ -13,7 +14,16 @@ def use_heuristic(heuristic_id, var_range, cdata):
 
     if heuristic_id == 3:
         return dlis(var_range, cdata)
-#
+
+    if heuristic_id == 4:
+        return jwTS(var_range, cdata)
+
+    if heuristic_id == 5:
+        return mom(var_range, cdata)
+
+    if heuristic_id == 6:
+        return dlcs(var_range, cdata)
+# 
 #
 def mostOftenVariable(var_range, cdata):
     """
@@ -100,7 +110,7 @@ def mom(var_range, cdata):
     balanced variables
     """
 
-    k = 10	#tuneable parameter
+    k = 10  #tuneable parameter
 
     var = 0
     best = -1
@@ -120,8 +130,8 @@ def mom(var_range, cdata):
 
         mom_value = pvlen * nvlen + 2**k * (pvlen + nvlen)
 
-        if eq_value > best:
-            best = eq_value
+        if mom_value > best:
+            best = mom_value
             var = v
 
     return var
@@ -147,9 +157,16 @@ def jwOS(var_range, cdata):
         j_value = 0
 
         try:
-            v_clauses = cdata.litclauses[v]
-            for clause in v_clauses:
-            	j_value += 2**(-len(clause))
+            vpos_clauses = cdata.litclauses[v]
+            for clause in vpos_clauses:
+                j_value += 2**(-len(clause))
+        except KeyError:
+            pass
+
+        try:
+            vneg_clauses = cdata.litclauses[-v]
+            for clause in vneg_clauses:
+                j_value += 2**(-len(clause))
         except KeyError:
             pass
 
@@ -177,30 +194,30 @@ def jwTS(var_range, cdata):
     best = -1
 
     for v in var_range:
-        jpos_value, jneg_value = 0
+        jpos_value = jneg_value = 0
 
         try:
             vpos_clauses = cdata.litclauses[v]
             for pos_clause in vpos_clauses:
-            	jpos_value += 2**(-len(pos_clause))
+                jpos_value += 2**(-len(pos_clause))
         except KeyError:
             pass
 
         try:
             vneg_clauses = cdata.litclauses[-v]
             for neg_clause in vneg_clauses:
-            	jneg_value += 2**(-len(neg_clause))
+                jneg_value += 2**(-len(neg_clause))
         except KeyError:
             pass
 
-      	j_value = jpos_value + jneg_value
+        j_value = jpos_value + jneg_value
 
         if j_value > best:
             best = j_value
             if jneg_value > jpos_value:
-            	var = -v	#MAYBE ERROR FOR v=0
+                var = -v
             else:
-            	var = v
+                var = v
 
     return var
 
@@ -222,7 +239,7 @@ def dlcs(var_range, cdata):
     var = 0
 
     for v in var_range:
-        times, vp, vn = 0
+        times = vp = vn = 0
 
 
         try:
@@ -239,10 +256,10 @@ def dlcs(var_range, cdata):
 
         if times > best:
             best = times
-            if vn > vp:
-            	var = -v #MAYBE ERROR FOR v=0
+            if vp >= vn:
+                var = v
             else:
-            	var = v
+                var = -v
 
     return var
 
@@ -264,11 +281,21 @@ def dlis(var_range, cdata):
 
     for v in var_range:
         times = 0
+        pvlen = nvlen = 0
 
         try:
-        	times = len(cdata.litclauses[v])
-	        if times > best:
-        	   var = v #MAYBE ERROR FOR v=0
+            pvlen = len(cdata.litclauses[v])
+            if pvlen > best:
+                best = pvlen
+                var = v
+        except KeyError:
+            pass
+
+        try:
+            nvlen = len(cdata.litclauses[-v])
+            if nvlen > best:
+                best = nvlen
+                var = -v
         except KeyError:
             pass
 

@@ -89,8 +89,8 @@ def _solve(variables, cdata, interpretation, heuristic, run_stats):
     # select variable to explore
     var = heuristic(variables, cdata)
 
-    used_vars.add(var)
-    variables.remove(var)
+    used_vars.add(abs(var))
+    variables.remove(abs(var))
 
     run_stats.add_split()
 
