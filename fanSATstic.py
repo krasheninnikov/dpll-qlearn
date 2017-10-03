@@ -43,45 +43,63 @@ var_selection_heuristics = {
 SATISFIABLE_OUT = "s SATISFIABLE"
 UNSATISFIABLE_OUT = "s UNSATISFIABLE"
 
-#
-#
+
+class RunStats(object):
+    def __init__(self):
+        self.n_episodes = 0
+        self.n_splits = 0
+        self.episode_stats = []
+
+    def finish_episode(self):
+        self.episode_stats.append(self.n_splits)
+        self.n_splits = 0
+        self.n_episodes += 1
+
+    def add_split(self):
+        self.n_splits += 1
+
+
 def main(options):
-    """
-    Main(options): void
-    """
+    n_restarts = 30
+    for restart in range(n_restarts):
+        np.random.seed(restart)
 
-    global replay_buf
-    global q_l_agent
-    global epsilon
-    replay_buf = ReplayBuf(10000, 7, n_actions=3)
-    q_l_agent = Estimator(replay_buf)
-    run_stats = RunStats()
+        global replay_buf
+        global q_l_agent
+        global epsilon
+        replay_buf = ReplayBuf(10000, 7, n_actions=4)
+        q_l_agent = Estimator(replay_buf)
+        run_stats = RunStats()
 
-    n_episodes = 1000
-    for i in range(n_episodes):
+        n_episodes = 200
+        epsilon = 1
+        for i in range(n_episodes):
 
-        if i < 100:
-            epsilon = 1
-        else:
-            epsilon = 0.1 - (0.1 * i / n_episodes)
+
+            epsilon = epsilon*0.97
             q_l_agent.train(discount_factor = 0.999, replay_buf = replay_buf)
 
 
-        num_vars, clauses = datautil.parseCNF(options.file)
-        res = None
-        res = dpll.solve(num_vars,
-                         clauses,
-                         automatic_heuristic,
-                         run_stats)
-        #if res[0]:
-        print("Ep {}  done in {} splits".format(i, run_stats.n_splits ))
-        replay_buf.game_over()
+            num_vars, clauses = datautil.parseCNF(options.file)
+            res = None
+            res = dpll.solve(num_vars,
+                             clauses,
+                             automatic_heuristic,
+                             run_stats)
+            #if res[0]:
+            print("Ep {}  done in {} splits".format(i, run_stats.n_splits ))
 
-        if i>100:
-            if run_stats.n_splits > 70:
-            #np.percentile(np.asarray(run_stats.episode_stats), 40):
-                replay_buf.reset_index_back_by_n(run_stats.n_splits)
-        run_stats.finish_episode()
+            replay_buf.game_over()
+
+            #if i>100:
+            #    if run_stats.n_splits > 70:
+                #np.percentile(np.asarray(run_stats.episode_stats), 40):
+            #        replay_buf.reset_index_back_by_n(run_stats.n_splits)
+            run_stats.finish_episode()
+
+        np.save("run_stats/run_stats"+str(restart),
+                    np.asarray(run_stats.episode_stats),
+                    allow_pickle=True, fix_imports=True)
 
 
         #print formatSystematicSearchResult(res)
@@ -117,6 +135,7 @@ def formatLocalSearchResult(bool_result):
         else:
             out += ' %d' % (-(ind+1) )
     return out
+
 
 def formatSystematicSearchResult(result):
     """
@@ -177,19 +196,7 @@ def printComments(comments):
         print 'c', comment
 
 
-class RunStats(object):
-    def __init__(self):
-        self.n_episodes = 0
-        self.n_splits = 0
-        self.episode_stats = []
 
-    def finish_episode(self):
-        self.episode_stats.append(self.n_splits)
-        self.n_splits = 0
-        self.n_episodes += 1
-
-    def add_split(self):
-        self.n_splits += 1
 
 #######################
 #                     #

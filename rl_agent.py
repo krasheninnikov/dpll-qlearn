@@ -8,11 +8,17 @@ from sklearn.kernel_approximation import RBFSampler
 
 def make_state(var_range, cdata):
     clause_lengths = np.array(map(len, cdata.clauses))
+    #for v in var_range:
+    #    if v in cdata.litclauses.keys():
+    #        var_counts = np.array(map(len, cdata.litclauses[v]))
+    #print(var_counts)
+
 
     n_clauses  = len(clause_lengths)
     percentile_len = np.percentile(clause_lengths, np.arange(6)*20)
+    percentile_var_counts = np.percentile(clause_lengths, np.arange(6)*20)
 
-    state = np.append(percentile_len, n_clauses)
+    state = np.append(percentile_len, np.log(n_clauses))
     return state
 
 
@@ -75,9 +81,8 @@ class ReplayBuf():
 
 class Estimator():
     """
-    Value Function approximator.
+    Q-value function approximator.
     """
-
     def __init__(self, replay_buf):
         self.n_actions = replay_buf.n_actions
 
