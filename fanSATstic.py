@@ -50,6 +50,7 @@ class RunStats(object):
         self.n_splits = 0
         self.episode_stats = []
 
+
     def finish_episode(self):
         self.episode_stats.append(self.n_splits)
         self.n_splits = 0
@@ -60,7 +61,10 @@ class RunStats(object):
 
 
 def main(options):
-    n_restarts = 30
+    global state_list
+    state_list = []
+
+    n_restarts = 1
     for restart in range(n_restarts):
         np.random.seed(restart)
 
@@ -97,9 +101,13 @@ def main(options):
             #        replay_buf.reset_index_back_by_n(run_stats.n_splits)
             run_stats.finish_episode()
 
-        np.save("run_stats/run_stats"+str(restart),
-                    np.asarray(run_stats.episode_stats),
-                    allow_pickle=True, fix_imports=True)
+        #np.save("run_stats/run_stats"+str(restart),
+        #            np.asarray(run_stats.episode_stats),
+        #            allow_pickle=True, fix_imports=True)
+
+    #np.save("state_var/state_list",
+    #            np.asarray(state_list),
+    #            allow_pickle=True, fix_imports=True)
 
 
         #print formatSystematicSearchResult(res)
@@ -107,8 +115,10 @@ def main(options):
 
 def automatic_heuristic(var_range, cdata):
 
-    #epsilon = 0.05
     s = make_state(var_range, cdata)
+
+    state_list.append(s)
+
     action_probs = q_l_agent.policy_eps_greedy(epsilon, s)
     heuristic_id = np.random.choice(np.arange(len(action_probs)), p=action_probs)
     replay_buf.append_s_a_r(s, heuristic_id, -1)
