@@ -8,28 +8,17 @@ from sklearn.kernel_approximation import RBFSampler
 
 def make_state(var_range, cdata):
     clause_lengths = np.array(map(len, cdata.clauses))
-<<<<<<< HEAD
-    #for v in var_range:
-    #    if v in cdata.litclauses.keys():
-    #        var_counts = np.array(map(len, cdata.litclauses[v]))
-    #print(var_counts)
 
-=======
     lit_occurrences = np.array([len(value) for key, value in cdata.litclauses.iteritems()])
->>>>>>> b27e411bb42a639a3941e4551eb638ef61ba57fa
 
     n_clauses  = len(clause_lengths)
     percentile_len = np.percentile(clause_lengths, np.arange(6)*20)
     percentile_var_counts = np.percentile(clause_lengths, np.arange(6)*20)
 
-<<<<<<< HEAD
-    state = np.append(percentile_len, np.log(n_clauses))
-=======
     percentile_occurences = np.percentile(lit_occurrences, np.arange(6)*20)
-    
-    state = np.append(percentile_len, n_clauses)
+
+    state = np.append(percentile_len, np.log(n_clauses))    
     state = np.concatenate((state, percentile_occurences),axis=0)
->>>>>>> b27e411bb42a639a3941e4551eb638ef61ba57fa
     return state
 
 
