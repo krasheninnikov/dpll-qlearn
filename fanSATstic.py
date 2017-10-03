@@ -9,14 +9,6 @@ import numpy as np
 from rl_agent import ReplayBuf, Estimator, make_state
 
 
-
-__version__='0.4'
-__license__='GPL'
-__authors__=['Marc Piñol Pueyo <mpp5@alumnes.udl.cat>',
-            'Josep Pon Farreny <jpf2@alumnes.udl.cat>']
-
-__description__='FanSATstic v%s' % __version__
-
 # List of possible algorithms
 DPLL = 'dpll'
 systematic_search_algs = [DPLL]
@@ -71,16 +63,16 @@ def main(options):
         global replay_buf
         global q_l_agent
         global epsilon
-        replay_buf = ReplayBuf(10000, 13, n_actions=4)
+        replay_buf = ReplayBuf(30000, 13, n_actions=4)
         q_l_agent = Estimator(replay_buf)
         run_stats = RunStats()
 
-        n_episodes = 400
+        n_episodes = 100
         epsilon = 1
         for i in range(n_episodes):
 
 
-            epsilon = epsilon*0.985
+            epsilon = epsilon*0.97
             q_l_agent.train(discount_factor = 0.999, replay_buf = replay_buf)
 
 
@@ -90,20 +82,16 @@ def main(options):
                              clauses,
                              automatic_heuristic,
                              run_stats)
-            #if res[0]:
+
             print("Ep {}  done in {} splits".format(i, run_stats.n_splits ))
 
             replay_buf.game_over()
 
-            #if i>100:
-            #    if run_stats.n_splits > 70:
-                #np.percentile(np.asarray(run_stats.episode_stats), 40):
-            #        replay_buf.reset_index_back_by_n(run_stats.n_splits)
             run_stats.finish_episode()
 
-        #np.save("run_stats/run_stats"+str(restart),
-        #            np.asarray(run_stats.episode_stats),
-        #            allow_pickle=True, fix_imports=True)
+        np.save("run_stats/run_stats"+str(restart),
+                    np.asarray(run_stats.episode_stats),
+                    allow_pickle=True, fix_imports=True)
 
     #np.save("state_var/state_list",
     #            np.asarray(state_list),

@@ -41,6 +41,8 @@ class ReplayBuf():
         self.a_current = None
         self.r_current = None
 
+        self.full = False
+
     def append(self, s_t, a_t, r_t, s_t_plus_1):
         self.s_t[self.index, :] = s_t
         self.s_t_plus_1[self.index, :] = s_t_plus_1
@@ -51,6 +53,9 @@ class ReplayBuf():
         self.action[self.index] = act
 
         self.index += 1
+        if self.index == self.replay_len:
+            self.full = True
+            print("FULL")
         self.index = self.index % self.replay_len
 
     def append_s_a_r(self, s_t, a_t, r_t):
@@ -70,7 +75,7 @@ class ReplayBuf():
         self.a_current = None
         self.r_current = None
 
-        self.reward[self.index - 1] = 1
+        self.reward[self.index - 1] = 0
 
     def reset_index_back_by_n(self, n):
         self.index = self.index - n
@@ -90,7 +95,7 @@ class Estimator():
         self.poly = PolynomialFeatures(2)
 
         for _ in range(self.n_actions):
-            model = SGDRegressor(learning_rate="constant")
+            model = SGDRegressor(learning_rate="constant", eta0 =0.05)
             # We need to call partial_fit once to initialize the model
             # or we get a NotFittedError when trying to make a prediction
             # This is quite hacky.
@@ -151,7 +156,11 @@ class Estimator():
 
     def train(self, discount_factor, replay_buf):
         for a in range(replay_buf.n_actions):
-            action_index = (replay_buf.action[:,a] == a)
+            if not replay_buf.full:
+                action_index = (replay_buf.action[:,a] == 1)
+                action_index[replay_buf.index::] = False
+            else:
+                action_index = (replay_buf.action[:,a] == 1)
             if sum(action_index) >0:
                 q_values_next = self.predict(replay_buf.s_t_plus_1[action_index])
                 td_target = replay_buf.reward[action_index] + discount_factor * np.max(q_values_next)
