@@ -64,12 +64,12 @@ def main(options):
     for restart in range(n_restarts):
         np.random.seed(restart)
 
-        global replay_buf
-        global q_l_agent
-        global epsilon
-        replay_buf = ReplayBuf(10000, 7, n_actions=4)
-        q_l_agent = Estimator(replay_buf)
-        run_stats = RunStats()
+    global replay_buf
+    global q_l_agent
+    global epsilon
+    replay_buf = ReplayBuf(10000, 13, n_actions=3)
+    q_l_agent = Estimator(replay_buf)
+    run_stats = RunStats()
 
         n_episodes = 200
         epsilon = 1
