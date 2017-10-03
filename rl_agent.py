@@ -4,6 +4,7 @@ import sklearn.preprocessing
 import sklearn.pipeline
 from sklearn.linear_model import SGDRegressor
 from sklearn.kernel_approximation import RBFSampler
+from sklearn.preprocessing import PolynomialFeatures
 
 
 def make_state(var_range, cdata):
@@ -86,6 +87,8 @@ class Estimator():
         # action space. Alternatively we could somehow encode the action
         # into the features, but this way it's easier to code up.
         self.models = []
+        self.poly = PolynomialFeatures(2)
+
         for _ in range(self.n_actions):
             model = SGDRegressor(learning_rate="constant")
             # We need to call partial_fit once to initialize the model
@@ -141,7 +144,8 @@ class Estimator():
 
         A = np.ones(self.n_actions, dtype=float) * epsilon / self.n_actions
         q_values = self.predict([observation])
-        best_action = np.argmax(q_values)
+        best_action = np.random.choice(np.flatnonzero(q_values == q_values.max()))
+        # best_action = np.argmax(q_values)
         A[best_action] += (1.0 - epsilon)
         return A
 

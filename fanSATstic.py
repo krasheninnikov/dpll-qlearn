@@ -75,12 +75,12 @@ def main(options):
         q_l_agent = Estimator(replay_buf)
         run_stats = RunStats()
 
-        n_episodes = 200
+        n_episodes = 400
         epsilon = 1
         for i in range(n_episodes):
 
 
-            epsilon = epsilon*0.97
+            epsilon = epsilon*0.985
             q_l_agent.train(discount_factor = 0.999, replay_buf = replay_buf)
 
 
@@ -101,13 +101,13 @@ def main(options):
             #        replay_buf.reset_index_back_by_n(run_stats.n_splits)
             run_stats.finish_episode()
 
-        np.save("run_stats/run_stats"+str(restart),
-                    np.asarray(run_stats.episode_stats),
-                    allow_pickle=True, fix_imports=True)
+        #np.save("run_stats/run_stats"+str(restart),
+        #            np.asarray(run_stats.episode_stats),
+        #            allow_pickle=True, fix_imports=True)
 
-    np.save("state_var/state_list",
-                np.asarray(state_list),
-                allow_pickle=True, fix_imports=True)
+    #np.save("state_var/state_list",
+    #            np.asarray(state_list),
+    #            allow_pickle=True, fix_imports=True)
 
 
         #print formatSystematicSearchResult(res)

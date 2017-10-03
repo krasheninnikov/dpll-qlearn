@@ -3,6 +3,7 @@ import numpy as np
 # -*- coding: utf-8 -*-
 def use_heuristic(heuristic_id, var_range, cdata):
 
+
     if heuristic_id == 0:
         return mostOftenVariable(var_range, cdata)
 
@@ -10,10 +11,10 @@ def use_heuristic(heuristic_id, var_range, cdata):
         return mostEqulibratedVariable(var_range, cdata)
 
     if heuristic_id == 2:
-        return jwOS(var_range, cdata)
+        return dlcs(var_range, cdata)
 
     if heuristic_id == 3:
-        return dlis(var_range, cdata)
+        return jwOS(var_range, cdata)
 
     if heuristic_id == 4:
         return jwTS(var_range, cdata)
@@ -22,8 +23,8 @@ def use_heuristic(heuristic_id, var_range, cdata):
         return mom(var_range, cdata)
 
     if heuristic_id == 6:
-        return dlcs(var_range, cdata)
-# 
+        return dlis(var_range, cdata)
+#
 #
 def mostOftenVariable(var_range, cdata):
     """
