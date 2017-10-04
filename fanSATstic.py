@@ -13,6 +13,9 @@ from rl_agent import ReplayBuf, Estimator, make_state
 DPLL = 'dpll'
 systematic_search_algs = [DPLL]
 
+__description__='FanSATstic'
+
+
 # Variable selection heuristics
 MOST_OFTEN = 'most_often'
 MOST_EQUILIBRATED = 'most_equilibrated'
