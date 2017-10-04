@@ -13,8 +13,6 @@ ClausesChanges = collections.namedtuple('ClausesChanges',
                                         'rclauses mclauses')
 
 
-#
-#
 def solve(num_variables, clauses, selection_heuristic, run_stats):
     """
     Uses the dpll algorithm to determine if the formula is satisfiable or
@@ -43,8 +41,6 @@ def solve(num_variables, clauses, selection_heuristic, run_stats):
     return _solve(variables, cdata, interpretation, selection_heuristic, run_stats)
 
 
-#
-#
 def _solve(variables, cdata, interpretation, heuristic, run_stats):
     """
     DPLL recursive implementation
@@ -106,8 +102,6 @@ def _solve(variables, cdata, interpretation, heuristic, run_stats):
     return res
 
 
-#
-#
 def dpllBranch(var, variables, cdata, interpretation, heuristic, run_stats):
 
     """
@@ -146,8 +140,7 @@ def dpllBranch(var, variables, cdata, interpretation, heuristic, run_stats):
     # Both assignations have failed
     return (False, frozenset())
 
-#
-#
+
 def unitPropagation(variables, cdata, interpretation, used_vars, cchanges):
     """
     Search for clauses with only one literal and then remove the unnecessary
@@ -185,8 +178,7 @@ def unitPropagation(variables, cdata, interpretation, used_vars, cchanges):
 
     return False
 
-#
-#
+
 def pureLiteral(variables, cdata, interpretation, used_vars, cchanges):
     """
     Search for pure literals and then remove the unnecessary information and
@@ -226,8 +218,6 @@ def pureLiteral(variables, cdata, interpretation, used_vars, cchanges):
                     pure_lits.add(-v)
 
 
-#
-#
 def removeClausesWithLiteral(lit, cdata, cchanges):
     """
     Remove all the clauses with the specified literal and logs the changes
@@ -252,8 +242,7 @@ def removeClausesWithLiteral(lit, cdata, cchanges):
 
     del cdata.litclauses[lit]
 
-#
-#
+
 def removeLiteralFromClauses(lit, cdata, cchanges):
     """
     Remove the specified literal from all the clauses it belongs to and
@@ -289,14 +278,12 @@ def removeLiteralFromClauses(lit, cdata, cchanges):
 
     return False
 
-#
-#
+
 def undoClauseChanges(cdata, cchanges):
     readdRemovedClauses(cdata, cchanges)
     undoModifiedClauses(cdata, cchanges)
 
-#
-#
+
 def readdRemovedClauses(cdata, cchanges):
     """
     Add all the clauses removed on a previous call to removeClausesWithLiteral
@@ -310,8 +297,7 @@ def readdRemovedClauses(cdata, cchanges):
                 cdata.litclauses[l] = set()
             cdata.litclauses[l].add(clause)
 
-#
-#
+
 def undoModifiedClauses(cdata, cchanges):
     """
     Undo all the modifications performed by removeLiteralFromClauses
@@ -343,8 +329,7 @@ def undoModifiedClauses(cdata, cchanges):
                     lset.remove(nclause)
                 lset.add(clause)
 
-#
-#
+
 def getVarsAndFirstIntp(num_variables, cdata):
     # Generates a list with variables to be assigned and an initial interpretation
     variables = set()
